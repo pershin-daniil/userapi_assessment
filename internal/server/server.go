@@ -72,7 +72,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}()
 	s.log.Infof("starting server on %s", s.address)
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("ListenAndServe faild: %w", err)
+		return fmt.Errorf("ListenAndServe failed: %w", err)
 	}
 	return nil
 }

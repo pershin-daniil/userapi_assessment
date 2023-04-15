@@ -25,13 +25,6 @@ const (
 	version   = "test"
 	storePath = `users_test.json`
 	testURL   = "http://localhost" + port
-
-	createUserEndpoint = "/api/v1/users"
-	updateUserEndpoint = "/api/v1/users/1"
-	getUserEndpoint    = "/api/v1/users/2"
-	getUsersEndpoint   = "/api/v1/users"
-	deleteUserEndpoint = "/api/v1/users/1"
-	getWrongIDEndpoint = "/api/v1/users/0"
 )
 
 type IntegrationTestSuite struct {
@@ -76,7 +69,7 @@ func (s *IntegrationTestSuite) TestMainWorkFlow() {
 	s.Run("create user", func() {
 		ctx := context.Background()
 		var respBody models.User
-		resp := s.sendRequest(ctx, http.MethodPost, createUserEndpoint, s.userRequest, &respBody)
+		resp := s.sendRequest(ctx, http.MethodPost, "/api/v1/users", s.userRequest, &respBody)
 		s.Require().Equal(http.StatusCreated, resp.StatusCode)
 		s.Require().NotEqual(0, respBody.ID)
 		s.Require().Equal(s.userRequest.DisplayName, respBody.DisplayName)
@@ -89,7 +82,7 @@ func (s *IntegrationTestSuite) TestMainWorkFlow() {
 	s.Run("update user", func() {
 		ctx := context.Background()
 		var respBody models.User
-		resp := s.sendRequest(ctx, http.MethodPatch, updateUserEndpoint, s.updateData, &respBody)
+		resp := s.sendRequest(ctx, http.MethodPatch, "/api/v1/users/1", s.updateData, &respBody)
 		s.Require().Equal(http.StatusOK, resp.StatusCode)
 		s.Require().NotEqual(0, respBody.ID)
 		s.Require().Equal(s.updateData.DisplayName, respBody.DisplayName)
@@ -102,7 +95,7 @@ func (s *IntegrationTestSuite) TestMainWorkFlow() {
 		var respBody models.User
 		s.userRequest.DisplayName = "Kar Karich"
 		s.userRequest.Email = "poop@mail.com"
-		resp := s.sendRequest(ctx, http.MethodPost, createUserEndpoint, s.userRequest, &respBody)
+		resp := s.sendRequest(ctx, http.MethodPost, "/api/v1/users", s.userRequest, &respBody)
 		s.Require().Equal(http.StatusCreated, resp.StatusCode)
 		s.Require().NotEqual(0, respBody.ID)
 		s.Require().Equal(s.userRequest.DisplayName, respBody.DisplayName)
@@ -115,7 +108,7 @@ func (s *IntegrationTestSuite) TestMainWorkFlow() {
 	s.Run("get user by id", func() {
 		ctx := context.Background()
 		var respBody models.User
-		resp := s.sendRequest(ctx, http.MethodGet, getUserEndpoint, nil, &respBody)
+		resp := s.sendRequest(ctx, http.MethodGet, "/api/v1/users/2", nil, &respBody)
 		s.Require().Equal(http.StatusOK, resp.StatusCode)
 		s.Require().Equal(2, respBody.ID)
 		s.Require().Equal(s.userRequest.DisplayName, respBody.DisplayName)
@@ -127,21 +120,21 @@ func (s *IntegrationTestSuite) TestMainWorkFlow() {
 	s.Run("get list of users", func() {
 		ctx := context.Background()
 		var respBody models.UserStore
-		resp := s.sendRequest(ctx, http.MethodGet, getUsersEndpoint, nil, &respBody)
+		resp := s.sendRequest(ctx, http.MethodGet, "/api/v1/users", nil, &respBody)
 		s.Require().Equal(http.StatusOK, resp.StatusCode)
 		s.Require().Equal(2, len(respBody.List))
 	})
 
 	s.Run("delete user", func() {
 		ctx := context.Background()
-		resp := s.sendRequest(ctx, http.MethodDelete, deleteUserEndpoint, nil, nil)
+		resp := s.sendRequest(ctx, http.MethodDelete, "/api/v1/users/1", nil, nil)
 		s.Require().Equal(http.StatusNoContent, resp.StatusCode)
 	})
 
 	s.Run("get list of users after deletion", func() {
 		ctx := context.Background()
 		var respBody models.UserStore
-		resp := s.sendRequest(ctx, http.MethodGet, getUsersEndpoint, nil, &respBody)
+		resp := s.sendRequest(ctx, http.MethodGet, "/api/v1/users", nil, &respBody)
 		s.Require().Equal(http.StatusOK, resp.StatusCode)
 		s.Require().Equal(1, len(respBody.List))
 	})
@@ -149,7 +142,7 @@ func (s *IntegrationTestSuite) TestMainWorkFlow() {
 	s.Run("user Not Found", func() {
 		ctx := context.Background()
 		var respBody models.User
-		resp := s.sendRequest(ctx, http.MethodGet, getWrongIDEndpoint, nil, &respBody)
+		resp := s.sendRequest(ctx, http.MethodGet, "/api/v1/users/0", nil, &respBody)
 		s.Require().Equal(http.StatusNotFound, resp.StatusCode)
 	})
 }
