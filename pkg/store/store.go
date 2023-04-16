@@ -20,7 +20,7 @@ var ErrUserNotFound = errors.New("user_not_found")
 type Store struct {
 	log   *logrus.Entry
 	store string
-	mu    sync.Mutex
+	mu    sync.RWMutex
 }
 
 func New(log *logrus.Logger, storePath string) *Store {
@@ -31,6 +31,9 @@ func New(log *logrus.Logger, storePath string) *Store {
 }
 
 func (s *Store) SearchUsers() (models.UserStore, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	file, err := os.ReadFile(s.store)
 	if err != nil {
 		return models.UserStore{}, fmt.Errorf("serch users failed: %w", err)
@@ -72,6 +75,9 @@ func (s *Store) CreateUser(user models.UserRequest) (models.User, error) {
 }
 
 func (s *Store) User(id string) (models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	store, err := s.connectStore(s.store)
 	if err != nil {
 		return models.User{}, fmt.Errorf("get user failed: %w", err)
@@ -135,31 +141,39 @@ func (s *Store) connectStore(path string) (models.UserStore, error) {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			f, e := os.Create(path)
-			if e != nil {
-				return models.UserStore{}, fmt.Errorf("connect store failed: %w", e)
-			}
-			defer f.Close()
-			data := models.UserStore{
-				Increment: 0,
-				List:      map[string]models.User{},
-			}
-			d, e := json.Marshal(data)
-			if e != nil {
-				return models.UserStore{}, fmt.Errorf("connect store failed: %w", e)
-			}
-			e = os.WriteFile(path, d, fs.ModePerm)
-			if e != nil {
-				return models.UserStore{}, fmt.Errorf("connect store failed: %w", e)
-			}
-			return s.connectStore(path)
-		} else {
-			return models.UserStore{}, fmt.Errorf("connect store failed: %w", err)
+			return s.createStore(path)
 		}
+		return models.UserStore{}, fmt.Errorf("connect store failed: %w", err)
 	}
 	var store models.UserStore
 	if err = json.Unmarshal(file, &store); err != nil {
 		return models.UserStore{}, fmt.Errorf("connect store failed: %w", err)
 	}
 	return store, nil
+}
+
+func (s *Store) createStore(path string) (models.UserStore, error) {
+	f, e := os.Create(path)
+	if e != nil {
+		return models.UserStore{}, fmt.Errorf("connect store failed: %w", e)
+	}
+	defer func() {
+		if e = f.Close(); e != nil {
+			s.log.Warnf("close file failed: %v", e)
+			return
+		}
+	}()
+	data := models.UserStore{
+		Increment: 0,
+		List:      map[string]models.User{},
+	}
+	d, e := json.Marshal(data)
+	if e != nil {
+		return models.UserStore{}, fmt.Errorf("connect store failed: %w", e)
+	}
+	e = os.WriteFile(path, d, fs.ModePerm)
+	if e != nil {
+		return models.UserStore{}, fmt.Errorf("connect store failed: %w", e)
+	}
+	return s.connectStore(path)
 }
